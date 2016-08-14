@@ -1,0 +1,72 @@
+ To use the Name Finder in a production system its strongly recommended to embed it directly into the application instead of using the command line interface. First the name finder model must be loaded into memory from disk or an other source. In the sample below its loaded from disk.
+
+				
+InputStream modelIn = new FileInputStream("en-ner-person.bin");
+
+try {
+  TokenNameFinderModel model = new TokenNameFinderModel(modelIn);
+}
+catch (IOException e) {
+  e.printStackTrace();
+}
+finally {
+  if (modelIn != null) {
+    try {
+      modelIn.close();
+    }
+    catch (IOException e) {
+    }
+  }
+}
+			 
+
+There is a number of reasons why the model loading can fail:
+
+    Issues with the underlying I/O
+
+    The version of the model is not compatible with the OpenNLP version
+
+    The model is loaded into the wrong component, for example a tokenizer model is loaded with TokenNameFinderModel class.
+
+    The model content is not valid for some other reason
+
+After the model is loaded the NameFinderME can be instantiated.
+
+				
+NameFinderME nameFinder = new NameFinderME(model);
+			
+
+The initialization is now finished and the Name Finder can be used. The NameFinderME class is not thread safe, it must only be called from one thread. To use multiple threads multiple NameFinderME instances sharing the same model instance can be created. The input text should be segmented into documents, sentences and tokens. To perform entity detection an application calls the find method for every sentence in the document. After every document clearAdaptiveData must be called to clear the adaptive data in the feature generators. Not calling clearAdaptiveData can lead to a sharp drop in the detection rate after a few documents. The following code illustrates that:
+
+				
+for (String document[][] : documents) {
+
+  for (String[] sentence : document) {
+    Span nameSpans[] = nameFinder.find(sentence);
+    // do something with the names
+  }
+
+  nameFinder.clearAdaptiveData()
+}
+			 
+
+the following snippet shows a call to find
+
+				
+String sentence[] = new String[]{
+    "Pierre",
+    "Vinken",
+    "is",
+    "61",
+    "years"
+    "old",
+    "."
+    };
+
+Span nameSpans[] = nameFinder.find(sentence);
+			
+
+The nameSpans arrays contains now exactly one Span which marks the name Pierre Vinken. The elements between the begin and end offsets are the name tokens. In this case the begin offset is 0 and the end offset is 2. The Span object also knows the type of the entity. In this case its person (defined by the model). It can be retrieved with a call to Span.getType(). Additionally to the statistical Name Finder, OpenNLP also offers a dictionary and a regular expression name finder implementation.
+
+TODO: Explain how to retrieve probs from the name finder for names and for non recognized names
+
